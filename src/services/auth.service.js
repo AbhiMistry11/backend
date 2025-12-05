@@ -13,28 +13,25 @@ export const loginService = async (email, password) => {
       },
     ],
   });
-console.log("User found:", user?.dataValues);
-console.log("Password entered:", password);
-console.log("Password hash in DB:", user?.passwordHash);
 
   if (!user) {
     throw new Error("Invalid email or password");
   }
 
   const isMatch = await comparePassword(password, user.passwordHash);
-  console.log("isMatch:", isMatch); 
   if (!isMatch) {
     throw new Error("Invalid email or password");
   }
 
+  // 🔥 IMPORTANT — include employeeId in JWT payload
   const tokenPayload = {
     id: user.id,
     role: user.role,
+    employeeId: user.employeeProfile ? user.employeeProfile.id : null,
   };
 
   const token = signToken(tokenPayload);
 
-  // send minimal user data to frontend
   return {
     token,
     user: {
