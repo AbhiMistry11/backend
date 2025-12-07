@@ -7,7 +7,7 @@ const startServer = async () => {
   try {
     await initDb(); // connect to DB + sync models
     app.listen(PORT, () => {
-      console.log(`✅ LiteHR backend running on port ${PORT}`);
+      console.log(`LiteHR backend running on port ${PORT}`);
     });
   } catch (err) {
     console.error("❌ Failed to start server:", err.message);
