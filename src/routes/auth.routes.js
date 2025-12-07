@@ -8,6 +8,6 @@ const router = Router();
 router.post("/login", loginController);
 
 // Current logged-in user
-router.get("/me", authMiddleware, meController);
+router.get("/getUser", authMiddleware, meController);
 
 export default router;

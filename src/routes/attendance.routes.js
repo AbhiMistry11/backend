@@ -8,8 +8,8 @@ import {
 
 const router = Router();
 
-router.post("/mark-in", authMiddleware, markInController);
-router.post("/mark-out", authMiddleware, markOutController);
-router.get("/my", authMiddleware, myAttendanceController);
+router.put("/mark-in", authMiddleware, markInController);
+router.put("/mark-out", authMiddleware, markOutController);
+router.get("/getAttendance", authMiddleware, myAttendanceController);
 
 export default router;
