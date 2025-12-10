@@ -4,12 +4,14 @@ import { defineEmployeeModel } from "./employee.model.js";
 import { defineAttendanceModel } from "./attendance.model.js";
 import { defineLeaveRequestModel } from "./leaveRequest.model.js";
 import { defineWorklogModel } from "./worklog.model.js";
+import { defineTaskModel } from "./task.model.js";
 
 let User;
 let Employee;
 let Attendance;
 let LeaveRequest;
 let Worklog;
+let Task; 
 
 export const setupModels = (sequelize) => {
   // Define models
@@ -18,6 +20,7 @@ export const setupModels = (sequelize) => {
   Attendance = defineAttendanceModel(sequelize);
   LeaveRequest = defineLeaveRequestModel(sequelize);
   Worklog = defineWorklogModel(sequelize);
+  Task = defineTaskModel(sequelize);  
 
   // User ↔ Employee
   User.hasOne(Employee, {
@@ -62,6 +65,26 @@ export const setupModels = (sequelize) => {
     foreignKey: "employeeId",
     as: "employee",
   });
+  // Employee ↔ Task (assigned to, assigned by)
+  Employee.hasMany(Task, {
+    foreignKey: "assignedToEmployeeId",
+    as: "assignedTasks",
+  });
+
+  Employee.hasMany(Task, {
+    foreignKey: "assignedByEmployeeId",
+    as: "createdTasks",
+  });
+
+  Task.belongsTo(Employee, {
+    foreignKey: "assignedToEmployeeId",
+    as: "assignee",
+  });
+
+  Task.belongsTo(Employee, {
+    foreignKey: "assignedByEmployeeId",
+    as: "assigner",
+  });
 };
 
-export { User, Employee, Attendance, LeaveRequest,Worklog };
+export { User, Employee, Attendance, LeaveRequest,Worklog, Task };

@@ -8,6 +8,7 @@ import managerRoutes from "./routes/manager.routes.js";
 import leaveRoutes from "./routes/leave.routes.js";
 import worklogRoutes from "./routes/worklog.routes.js";
 import dashboardRoutes from "./routes/dashboard.routes.js";
+import taskRoutes from "./routes/task.routes.js";
 
 const app = express();
 
@@ -23,6 +24,7 @@ app.use("/api/manager", managerRoutes);
 app.use("/api/leave", leaveRoutes);
 app.use("/api/worklogs", worklogRoutes);
 app.use("/api/dashboard", dashboardRoutes);
+app.use("/api/tasks", taskRoutes);
 
 // Health check
 app.get("/api/health", (req, res) => {
