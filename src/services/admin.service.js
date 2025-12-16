@@ -1,7 +1,10 @@
 import { User, Employee } from "../models/index.js";
 import { hashPassword } from "../utils/password.js";
+import { LeaveType, EmployeeLeaveBalance } from "../models/index.js";
+
 
 export const createEmployeeService = async (data) => {
+  const CURRENT_YEAR = new Date().getFullYear();
   const {
     email,
     password,
@@ -37,7 +40,20 @@ export const createEmployeeService = async (data) => {
     designation,
     dateOfJoining,
   });
-
+  
+  // after employee is created successfully
+  const leaveTypes = await LeaveType.findAll({ where: { isActive: true } });
+  
+  for (const type of leaveTypes) {
+    await EmployeeLeaveBalance.create({
+      employeeId: employee.id,
+      leaveTypeId: type.id,
+      year: CURRENT_YEAR,
+      total: type.yearlyLimit,
+      used: 0,
+      remaining: type.yearlyLimit,
+    });
+  }
   return { user, employee };
 };
 

@@ -39,6 +39,14 @@ export const defineLeaveRequestModel = (sequelize) => {
         type: DataTypes.INTEGER,
         allowNull: true,
       },
+      hasCollision: {
+        type: DataTypes.BOOLEAN,
+        defaultValue: false,
+      },
+      collisionCount: {
+        type: DataTypes.INTEGER,
+        defaultValue: 0,
+      },
     },
     {
       tableName: "leave_requests",
