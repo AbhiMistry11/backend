@@ -7,16 +7,17 @@ import { defineWorklogModel } from "./worklog.model.js";
 import { defineTaskModel } from "./task.model.js";
 import { defineLeaveTypeModel } from "./leaveType.model.js";
 import { defineEmployeeLeaveBalanceModel } from "./employeeLeaveBalance.model.js";
+import { defineNotificationModel } from "./notification.model.js";
 
 let User;
 let Employee;
 let Attendance;
 let LeaveRequest;
 let Worklog;
-let Task; 
+let Task;
 let LeaveType;
 let EmployeeLeaveBalance;
-
+let Notification;
 
 export const setupModels = (sequelize) => {
   // Define models
@@ -25,9 +26,10 @@ export const setupModels = (sequelize) => {
   Attendance = defineAttendanceModel(sequelize);
   LeaveRequest = defineLeaveRequestModel(sequelize);
   Worklog = defineWorklogModel(sequelize);
-  Task = defineTaskModel(sequelize); 
+  Task = defineTaskModel(sequelize);
   LeaveType = defineLeaveTypeModel(sequelize);
-  EmployeeLeaveBalance = defineEmployeeLeaveBalanceModel(sequelize); 
+  EmployeeLeaveBalance = defineEmployeeLeaveBalanceModel(sequelize);
+  Notification = defineNotificationModel(sequelize);
 
   // User ↔ Employee
   User.hasOne(Employee, {
@@ -62,7 +64,7 @@ export const setupModels = (sequelize) => {
     as: "employee",
   });
 
-// Employee ↔ Worklog (1-to-many)
+  // Employee ↔ Worklog (1-to-many)
   Employee.hasMany(Worklog, {
     foreignKey: "employeeId",
     as: "worklogs",
@@ -94,21 +96,23 @@ export const setupModels = (sequelize) => {
   });
 
   // associations
-LeaveType.hasMany(EmployeeLeaveBalance, {
-  foreignKey: "leaveTypeId",
-});
+  LeaveType.hasMany(EmployeeLeaveBalance, {
+    foreignKey: "leaveTypeId",
+  });
 
-EmployeeLeaveBalance.belongsTo(LeaveType, {
-  foreignKey: "leaveTypeId",
-});
+  EmployeeLeaveBalance.belongsTo(LeaveType, {
+    foreignKey: "leaveTypeId",
+  });
 
-Employee.hasMany(EmployeeLeaveBalance, {
-  foreignKey: "employeeId",
-});
+  Employee.hasMany(EmployeeLeaveBalance, {
+    foreignKey: "employeeId",
+  });
 
-EmployeeLeaveBalance.belongsTo(Employee, {
-  foreignKey: "employeeId",
-});
+  EmployeeLeaveBalance.belongsTo(Employee, {
+    foreignKey: "employeeId",
+  });
+  User.hasMany(Notification, { foreignKey: "userId" });
+  Notification.belongsTo(User, { foreignKey: "userId" });
 };
 
 export {
@@ -120,5 +124,5 @@ export {
   Task,
   LeaveType,
   EmployeeLeaveBalance,
+  Notification,
 };
-

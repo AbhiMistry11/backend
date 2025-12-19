@@ -1,4 +1,3 @@
-// src/services/leave.service.js
 import {
   Employee,
   LeaveRequest,
@@ -6,9 +5,11 @@ import {
   EmployeeLeaveBalance,
 } from "../models/index.js";
 import { Op } from "sequelize";
+import { createNotification } from "./notification.service.js";
 
 const CURRENT_YEAR = new Date().getFullYear();
 
+// Helper: calculate number of leave days
 const calculateDays = (fromDate, toDate) => {
   const start = new Date(fromDate);
   const end = new Date(toDate);
@@ -45,12 +46,18 @@ export const applyLeaveService = async (employeeId, data) => {
   if (!balance || balance.remaining < days) {
     throw new Error("Insufficient leave balance");
   }
-  // 🔴 LEAVE COLLISION CHECK
-  const employee = await Employee.findByPk(employeeId);
 
+  // 3️⃣ Get employee profile
+  const employee = await Employee.findByPk(employeeId);
+  if (!employee) {
+    throw new Error("Employee not found");
+  }
+
+  // 4️⃣ LEAVE COLLISION CHECK (exclude self)
   const collisions = await LeaveRequest.findAll({
     where: {
-      status: ["PENDING", "APPROVED"],
+      employeeId: { [Op.ne]: employeeId },
+      status: { [Op.in]: ["PENDING", "APPROVED"] },
       fromDate: { [Op.lte]: toDate },
       toDate: { [Op.gte]: fromDate },
     },
@@ -69,7 +76,7 @@ export const applyLeaveService = async (employeeId, data) => {
   const hasCollision = collisions.length > 0;
   const collisionCount = collisions.length;
 
-  // 3️⃣ Create leave request
+  // 5️⃣ Create leave request
   const leave = await LeaveRequest.create({
     employeeId,
     leaveType,
@@ -81,10 +88,27 @@ export const applyLeaveService = async (employeeId, data) => {
     collisionCount,
   });
 
+  // 6️⃣ Notify managers of the department
+  const managers = await Employee.findAll({
+    where: {
+      department: employee.department,
+      designation: { [Op.like]: "%Manager%" },
+    },
+  });
+
+  for (const manager of managers) {
+    await createNotification({
+      userId: manager.userId,
+      title: "New Leave Request",
+      message: `${employee.fullName} applied for leave`,
+      type: "LEAVE",
+    });
+  }
+
   return leave;
 };
 
-// My leave history
+// Employee: my leave history
 export const getMyLeavesService = async (employeeId) => {
   return LeaveRequest.findAll({
     where: { employeeId },
@@ -94,7 +118,7 @@ export const getMyLeavesService = async (employeeId) => {
 
 // ================= MANAGER / ADMIN =================
 
-// MANAGER / ADMIN: pending leaves (with collision info)
+// Pending leaves (with collision info)
 export const getPendingLeavesService = async (user) => {
   const whereLeave = { status: "PENDING" };
 
@@ -116,7 +140,6 @@ export const getPendingLeavesService = async (user) => {
       throw new Error("Manager employee profile not found");
     }
 
-    // Manager sees only department leaves
     include[0].where = { department: managerEmp.department };
   }
 
@@ -126,7 +149,6 @@ export const getPendingLeavesService = async (user) => {
     order: [["fromDate", "ASC"]],
   });
 
-  // Explicit collision info for frontend
   return leaves.map((leave) => ({
     id: leave.id,
     employeeId: leave.employee.id,
@@ -198,6 +220,14 @@ export const updateLeaveStatusService = async (user, leaveId, newStatus) => {
   leave.status = newStatus;
   leave.approverId = user.employeeId || null;
   await leave.save();
+
+  // Notify employee
+  await createNotification({
+    userId: leave.employee.userId,
+    title: "Leave Status Updated",
+    message: `Your leave has been ${newStatus}`,
+    type: "LEAVE",
+  });
 
   return leave;
 };

@@ -1,4 +1,5 @@
-import { Employee, Task } from "../models/index.js";
+import { Employee, Task, User } from "../models/index.js";
+import { createNotification } from "./notification.service.js";
 
 // MANAGER / ADMIN: assign task to employee
 export const createTaskService = async (user, data) => {
@@ -28,9 +29,20 @@ export const createTaskService = async (user, data) => {
     title,
     description,
     assignedToEmployeeId,
-    assignedByEmployeeId: user.employeeId, // manager/admin employee profile id
+    assignedByEmployeeId: user.employeeId,
     priority: priority || "MEDIUM",
     dueDate: dueDate || null,
+    status: "PENDING",
+  });
+
+  // 🔔 NOTIFY EMPLOYEE
+  const assigneeUser = await User.findByPk(assignee.userId);
+
+  await createNotification({
+    userId: assigneeUser.id,
+    title: "New Task Assigned",
+    message: `Task assigned: ${task.title}`,
+    type: "TASK",
   });
 
   return task;
@@ -64,32 +76,26 @@ export const getTeamTasksService = async (user) => {
     },
   ];
 
-  const where = {};
-
   if (user.role === "MANAGER") {
     const managerEmp = await Employee.findByPk(user.employeeId);
     if (!managerEmp) throw new Error("Manager employee profile not found");
 
-    include[0].where = { department: managerEmp.department }; // filter by dept
+    include[0].where = { department: managerEmp.department };
   }
 
-  const tasks = await Task.findAll({
-    where,
+  return Task.findAll({
     include,
     order: [["createdAt", "DESC"]],
   });
-
-  return tasks;
 };
 
-// EMPLOYEE (or MANAGER/ADMIN): update task status
+// EMPLOYEE / MANAGER / ADMIN: update task status
 export const updateTaskStatusService = async (user, taskId, newStatus) => {
   if (!["PENDING", "IN_PROGRESS", "COMPLETED"].includes(newStatus)) {
     throw new Error("Invalid task status");
   }
 
   const task = await Task.findByPk(taskId);
-
   if (!task) throw new Error("Task not found");
 
   // Employee can update only own tasks
@@ -99,9 +105,21 @@ export const updateTaskStatusService = async (user, taskId, newStatus) => {
     }
   }
 
-  // Manager/Admin can update any team task → keeping simple for now
   task.status = newStatus;
   await task.save();
+
+  // 🔔 NOTIFY MANAGER / ASSIGNER
+  if (task.assignedByEmployeeId) {
+    const assigner = await Employee.findByPk(task.assignedByEmployeeId);
+    const assignerUser = await User.findByPk(assigner.userId);
+
+    await createNotification({
+      userId: assignerUser.id,
+      title: "Task Status Updated",
+      message: `Task "${task.title}" updated to ${newStatus}`,
+      type: "TASK",
+    });
+  }
 
   return task;
 };
