@@ -44,6 +44,11 @@ export const createTaskService = async (user, data) => {
     message: `Task assigned: ${task.title}`,
     type: "TASK",
   });
+  await sendEmail({
+    to: assigneeUser.email,
+    subject: "New Task Assigned",
+    text: `You have been assigned a task: ${task.title}`,
+  });
 
   return task;
 };

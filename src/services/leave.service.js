@@ -6,6 +6,7 @@ import {
 } from "../models/index.js";
 import { Op } from "sequelize";
 import { createNotification } from "./notification.service.js";
+import { sendEmail } from "../utils/email.js";
 
 const CURRENT_YEAR = new Date().getFullYear();
 
@@ -75,6 +76,33 @@ export const applyLeaveService = async (employeeId, data) => {
 
   const hasCollision = collisions.length > 0;
   const collisionCount = collisions.length;
+  // Auto leave approval rule
+  const shouldAutoApproveLeave = ({ days, hasCollision }) => {
+    // Rule 1: Only 1-day leave
+    if (days > 1) return false;
+
+    // Rule 2: No collision
+    if (hasCollision) return false;
+
+    return true;
+  };
+
+  // 🔹 AUTO APPROVAL CHECK
+  const autoApprove = shouldAutoApproveLeave({
+    days,
+    hasCollision,
+  });
+
+  let finalStatus = "PENDING";
+
+  // If auto-approved → deduct balance immediately
+  if (autoApprove) {
+    finalStatus = "APPROVED";
+
+    balance.used += days;
+    balance.remaining -= days;
+    await balance.save();
+  }
 
   // 5️⃣ Create leave request
   const leave = await LeaveRequest.create({
@@ -83,27 +111,44 @@ export const applyLeaveService = async (employeeId, data) => {
     fromDate,
     toDate,
     reason,
-    status: "PENDING",
+    status: finalStatus,
     hasCollision,
     collisionCount,
   });
 
   // 6️⃣ Notify managers of the department
-  const managers = await Employee.findAll({
-    where: {
-      department: employee.department,
-      designation: { [Op.like]: "%Manager%" },
-    },
-  });
-
-  for (const manager of managers) {
+  if (autoApprove) {
+    // 🔔 Notify employee (auto-approved)
     await createNotification({
-      userId: manager.userId,
-      title: "New Leave Request",
-      message: `${employee.fullName} applied for leave`,
+      userId: employee.userId,
+      title: "Leave Auto-Approved",
+      message: "Your leave has been automatically approved",
       type: "LEAVE",
     });
+  } else {
+    // 🔔 Notify managers (manual approval)
+    const managers = await Employee.findAll({
+      where: {
+        department: employee.department,
+        designation: { [Op.like]: "%Manager%" },
+      },
+    });
+
+    for (const manager of managers) {
+      await createNotification({
+        userId: manager.userId,
+        title: "New Leave Request",
+        message: `${employee.fullName} applied for leave`,
+        type: "LEAVE",
+      });
+    }
   }
+
+  await sendEmail({
+    to: managerUser.email,
+    subject: "New Leave Request",
+    text: `${employee.fullName} has applied for leave.`,
+  });
 
   return leave;
 };
@@ -227,6 +272,11 @@ export const updateLeaveStatusService = async (user, leaveId, newStatus) => {
     title: "Leave Status Updated",
     message: `Your leave has been ${newStatus}`,
     type: "LEAVE",
+  });
+  await sendEmail({
+    to: leave.employee.user.email,
+    subject: "Leave Status Update",
+    text: `Your leave has been ${newStatus}.`,
   });
 
   return leave;

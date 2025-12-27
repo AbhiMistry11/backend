@@ -11,6 +11,9 @@ import dashboardRoutes from "./routes/dashboard.routes.js";
 import taskRoutes from "./routes/task.routes.js";
 import leaveTypeRoutes from "./routes/leaveType.routes.js";
 import leaveBalanceRoutes from "./routes/leaveBalance.routes.js";
+import dashboardChartsRoutes from "./routes/dashboard.charts.routes.js";
+import employeeDashboardRoutes from "./routes/employee.dashboard.routes.js";
+import reportRoutes from "./routes/report.routes.js";
 
 const app = express();
 
@@ -29,6 +32,9 @@ app.use("/api/dashboard", dashboardRoutes);
 app.use("/api/tasks", taskRoutes);
 app.use("/api/leavetypes", leaveTypeRoutes);
 app.use("/api/leavebalance", leaveBalanceRoutes);
+app.use("/api/dashboard/charts", dashboardChartsRoutes);
+app.use("/api/dashboard", employeeDashboardRoutes);
+app.use("/api/reports", reportRoutes);
 
 // Health check
 app.get("/api/health", (req, res) => {
